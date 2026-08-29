@@ -1,114 +1,127 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# WarmHeart
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend / REST API for the WarmHeart e-commerce storefront — auth, product catalog and cart management on NestJS + Prisma.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=flat&logo=nestjs&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat&logo=prisma&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white)
+![Neon](https://img.shields.io/badge/Neon-00E599?style=flat&logo=postgresql&logoColor=white)
 
-## Description
+**Frontend repo:** [WarmHeart_FE](https://github.com/metwoOSha/WarmHeart_FE)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Highlights
 
-## Project setup
+- **Modular Nest architecture** — `auth/`, `blankets/`, `cart/`, `users/` each as a self-contained module (controller → service → Prisma), wired together via DI.
+- **Prisma schema split by domain** (`prisma/models/*.prisma`) covering `Users`, `Blankets` (catalog), and `Cart`/`CartItem`.
+- **Cookie-based JWT auth** — `bcrypt` password hashing, JWT issued on register/login and set as an `httpOnly` cookie, verified per-request via a Passport `JwtStrategy` + `JwtAuthGuard` ([auth.guard.ts](src/auth/guards/auth.guard.ts)).
+- **Env validation at startup** — all required variables are checked with a Joi schema ([env.validation.ts](src/config/env.validation.ts)); the app refuses to boot if something's missing or malformed.
+- **Global Prisma → HTTP exception mapping** ([prisma-exception.filter.ts](src/common/filters/prisma-exception.filter.ts)) — not-found/unique/FK errors become proper 404/409/400 responses instead of raw 500s.
+- **Rate limiting** (`@nestjs/throttler`) — global limit plus a stricter one on `/auth/login` and `/auth/register`.
+- **Neon serverless Postgres** via `@prisma/adapter-pg`, a driver adapter built for connecting to Postgres from serverless/edge runtimes.
+- **CORS locked to the frontend origin** with credentials enabled, so the auth cookie flows between the two repos.
+- **Swagger/OpenAPI docs** generated from decorators, served at `/docs`.
 
-```bash
-$ npm install
+## Stack
+
+- **Runtime:** Node.js, TypeScript (ESM)
+- **Framework:** NestJS 12 (Express platform)
+- **ORM:** Prisma 7 (`prisma-client` generator) + `@prisma/adapter-pg`
+- **Database:** PostgreSQL (Neon)
+- **Auth:** `@nestjs/passport`, `passport-jwt`, `bcrypt`, `cookie-parser`
+- **Validation/config:** `class-validator`, `class-transformer`, `@nestjs/config` + `joi`
+- **Security:** `helmet`, `@nestjs/throttler`
+- **Docs:** `@nestjs/swagger`
+- **Dev tooling:** `oxlint`, Prettier, Vitest (test runner configured; suite not written yet)
+
+## Project structure
+
+```
+prisma/
+  models/              # schema split by domain: blankets, cart, users
+src/
+  auth/                # controller, service, JWT strategy/guard, DTOs
+  blankets/            # catalog module (controller, service, DTOs)
+  cart/                # per-user cart module (controller, service, DTOs)
+  users/                # user lookups, used internally by auth
+  prisma/               # PrismaService (DB client wrapper)
+  common/filters/        # global Prisma → HTTP exception filter
+  config/                # env validation schema
+  main.ts                # bootstrap: Swagger, CORS, Helmet, pipes, filters
 ```
 
-## Compile and run the project
+## Prerequisites & running locally
+
+- Node.js 20+
+- A PostgreSQL database (e.g. a free [Neon](https://neon.tech) instance)
+
+**Environment variables** (`.env`):
+
+| Variable | Description |
+|---|---|
+| `NODE_ENV` | `development` \| `production` \| `test` (defaults to `development`) |
+| `SERVER_PORT` | Port the server listens on (defaults to `3000`) |
+| `DATABASE_URL` | Postgres connection string |
+| `JWT_SECRET` | Secret used to sign/verify auth JWTs (min. 32 characters) |
+| `NEXT_PUBLIC_APP_URL` | Frontend origin, used for the CORS allow-list |
+
+**Setup:**
 
 ```bash
-# development
-$ npm run start
+npm install
 
-# watch mode
-$ npm run start:dev
+# apply the schema to your database
+npx prisma migrate dev
 
-# production mode
-$ npm run start:prod
+# start the dev server (watch mode)
+npm run start:dev
 ```
 
-## Run tests
+Production build:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run build       # nest build
+npm run start:prod  # node dist/main
 ```
 
-## Deployment
+Swagger docs are available at `http://localhost:3000/docs` once the server is running.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## API endpoints
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### `/auth`
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| POST | `/register` | Create a user, sets auth cookie | — |
+| POST | `/login` | Authenticate, sets auth cookie | — |
+| POST | `/logout` | Clear auth cookie | — |
+| GET | `/me` | Get the current authenticated user | Required |
+
+### `/blankets`
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/?page=&limit=` | List blankets (paginated, default `page=1&limit=20`) | — |
+| GET | `/:id` | Get a single blanket by id | — |
+
+### `/cart`
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/` | Get the current user's cart with items | Required |
+| POST | `/items` | Add an item to the cart (merges quantity if already present) | Required |
+| PATCH | `/items/:id` | Update a cart item's quantity | Required |
+| DELETE | `/items/:id` | Remove an item from the cart | Required |
+
+## Lint & testing
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run lint       # oxlint
+npm run format     # prettier --write
+npm run test       # unit tests (vitest)
+npm run test:e2e   # e2e tests (vitest)
+npm run test:cov   # coverage
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+No automated test suite is written yet — the runner and scripts are wired up and ready.
