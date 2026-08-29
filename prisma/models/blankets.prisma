@@ -1,0 +1,12 @@
+model Blankets {
+  id        String     @id @default(uuid())
+  name      String
+  size      String
+  price     Decimal
+  image     String
+  color     String
+  popular   Boolean
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  cartItems CartItem[]
+}

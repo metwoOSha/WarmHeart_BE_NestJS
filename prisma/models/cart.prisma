@@ -1,0 +1,17 @@
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      Users      @relation(fields: [userId], references: [id])
+  items     CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  blanketId String
+  quantity  Int
+  blanket   Blankets @relation(fields: [blanketId], references: [id])
+  cart      Cart     @relation(fields: [cartId], references: [id])
+}
